@@ -2,9 +2,6 @@
  * 奧特宇宙：究極光線對決 - 遊戲邏輯控制
  */
 
-import ultramanImg from './images/ultraman.jpg';
-import monsterImg from './images/monster.jpg';
-
 // ==========================================
 // 1. 遊戲資料配置
 // ==========================================
@@ -17,7 +14,7 @@ const HEROES = [
         atk: 120,
         def: 100,
         specialName: '哉佩利敖光線',
-        img: ultramanImg,
+        img: 'images/ultraman.jpg',
         color: '#ff2e54',
         desc: '能力均衡，擁有光之守護。',
         hue: 0
@@ -30,7 +27,7 @@ const HEROES = [
         atk: 150,
         def: 80,
         specialName: '集束賽羅射線',
-        img: ultramanImg, // 共用立繪
+        img: 'images/ultraman.jpg', // 共用立繪
         color: '#00f3ff',
         desc: '高攻擊力，進攻迅捷但防禦較弱。',
         hue: 200
@@ -43,7 +40,7 @@ const HEROES = [
         atk: 100,
         def: 120,
         specialName: '斯特利姆光線',
-        img: ultramanImg, // 共用立繪
+        img: 'images/ultraman.jpg', // 共用立繪
         color: '#ff7b00',
         desc: '高生命力與堅實防護，擅長持久戰。',
         hue: 330
@@ -58,7 +55,7 @@ const MONSTERS = [
         hp: 1200,
         atk: 110,
         def: 80,
-        img: monsterImg,
+        img: 'images/monster.jpg',
         color: '#ff7b00',
         desc: '強力的尾巴攻擊與地底衝撞。',
         hue: 0
@@ -70,9 +67,9 @@ const MONSTERS = [
         hp: 1500,
         atk: 140,
         def: 100,
-        img: monsterImg, // 共用立繪
+        img: 'images/monster.jpg', // 共用立繪
         color: '#cc00ff',
-        desc: '防禦力極高，能反彈光線的終極怪獸。',
+        desc: '防禦力極高，能反彈光線的終極怪獸. ',
         hue: 130
     },
     {
@@ -82,7 +79,7 @@ const MONSTERS = [
         hp: 900,
         atk: 120,
         def: 70,
-        img: monsterImg, // 共用立繪
+        img: 'images/monster.jpg', // 共用立繪
         color: '#00ff87',
         desc: '幻影分身，動作敏捷且具備干擾能力。',
         hue: 250
@@ -108,11 +105,26 @@ class SoundManager {
 
     init() {
         if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                console.warn('此瀏覽器環境不支持 Web Audio API');
+                return;
+            }
+            try {
+                this.ctx = new AudioContextClass();
+            } catch (e) {
+                console.error('無法初始化 AudioContext:', e);
+                return;
+            }
         }
-        // 解除瀏覽器對音訊的自動播放限制
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
+        // 解除瀏覽器對音訊的自動播放限制 (加 try-catch 以相容舊款 Safari 的 Promise 異常)
+        if (this.ctx && this.ctx.state === 'suspended') {
+            try {
+                this.ctx.resume().catch(err => console.log('Audio resume ignored:', err));
+            } catch (e) {
+                // 某些舊版 Safari resume() 可能不返回 Promise
+                this.ctx.resume();
+            }
         }
     }
 
@@ -121,7 +133,9 @@ class SoundManager {
         
         // 確保音訊環境正常
         if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
+            try {
+                this.ctx.resume().catch(() => {});
+            } catch (e) {}
         }
 
         const osc = this.ctx.createOscillator();
@@ -1294,10 +1308,32 @@ class GameEngine {
 }
 
 // ==========================================
-// 9. 啟動遊戲
+// 9. 啟動遊戲與自適應等比縮放
 // ==========================================
+function resizeGame() {
+    const container = document.getElementById('game-container');
+    if (!container) return;
+
+    const targetW = 1024;
+    const targetH = 768;
+    const windowW = window.innerWidth;
+    const windowH = window.innerHeight;
+
+    // 計算最佳貼合比例
+    const scaleX = windowW / targetW;
+    const scaleY = windowH / targetH;
+    const scale = Math.min(scaleX, scaleY);
+
+    // 套用 CSS transform 以實現完美等比縮放與置中
+    container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     window.gameEngine = new GameEngine();
+
+    // 初始化與監聽視窗變動，實現響應式自適應縮放
+    resizeGame();
+    window.addEventListener('resize', resizeGame);
 
     // 針對 iOS Safari 及行動端觸控設備的全域音訊一次性解鎖機制
     const unlockAudio = () => {

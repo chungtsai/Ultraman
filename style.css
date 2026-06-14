@@ -41,9 +41,12 @@ body {
     overflow: hidden;
 }
 
-/* 遊戲主容器 (保持 16:9 比例) */
+/* 遊戲主容器 (保持 16:9 比例，支援 JS 自動等比縮放) */
 .game-container {
-    position: relative;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     width: 1024px;
     height: 768px;
     background-color: var(--bg-dark);
@@ -388,7 +391,7 @@ body {
    2. 戰鬥畫面 樣式
    ========================================== */
 #battle-screen {
-    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('./images/bg.jpg');
+    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('../images/bg.jpg');
     background-size: cover;
     background-position: center;
     display: flex;
