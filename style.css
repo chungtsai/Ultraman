@@ -391,7 +391,7 @@ body {
    2. 戰鬥畫面 樣式
    ========================================== */
 #battle-screen {
-    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('../images/bg.jpg');
+    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('/images/bg.jpg');
     background-size: cover;
     background-position: center;
     display: flex;
@@ -726,19 +726,54 @@ body {
     box-shadow: 0 0 15px var(--neon-red);
 }
 
-/* QTE 完美判定的虛線外圈（提示超完美時機） */
+/* QTE 完美判定對齊外環 (代表 scale = 1.0 的完美判定點) */
 .qte-perfect-guide {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 32px;
-    height: 32px;
-    margin-top: -16px;
-    margin-left: -16px;
-    border: 1.5px dashed rgba(255,255,255,0.4);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 2px dashed rgba(0, 243, 255, 0.6);
     border-radius: 50%;
-    animation: rotateGuide 4s linear infinite;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+    animation: rotateGuide 12s linear infinite;
     pointer-events: none;
+    box-sizing: border-box;
+}
+
+/* 完美判定容差範圍外光環 (Perfect Zone: scale 0.88 ~ 1.12 視覺對齊環區) */
+.qte-perfect-guide::after {
+    content: '';
+    position: absolute;
+    top: -12%;
+    left: -12%;
+    right: -12%;
+    bottom: -12%;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 243, 255, 0.2);
+    background: radial-gradient(circle, 
+        transparent 68%, 
+        rgba(0, 243, 255, 0.15) 70%, 
+        rgba(0, 243, 255, 0.15) 86%, 
+        transparent 88%
+    );
+    box-sizing: border-box;
+}
+
+/* 怪獸進攻回合 (玩家防禦) 的紅色 QTE 完美判定外環 */
+.monster-turn .qte-perfect-guide {
+    border-color: rgba(255, 46, 84, 0.65);
+    box-shadow: 0 0 10px rgba(255, 46, 84, 0.45);
+}
+
+.monster-turn .qte-perfect-guide::after {
+    border-color: rgba(255, 46, 84, 0.25);
+    background: radial-gradient(circle, 
+        transparent 68%, 
+        rgba(255, 46, 84, 0.18) 70%, 
+        rgba(255, 46, 84, 0.18) 86%, 
+        transparent 88%
+    );
 }
 
 @keyframes rotateGuide {
@@ -839,28 +874,47 @@ body {
     -webkit-backdrop-filter: blur(8px);
 }
 
-/* 動作選單 */
+/* 動作選單 - 懸浮放置在螢幕中央 (戰鬥舞台中央) */
 .action-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
-    gap: 12px;
-    width: 280px;
-    padding: 0 20px;
-    border-right: 1px solid rgba(0, 243, 255, 0.15);
+    align-items: center;
+    gap: 24px;
+    width: auto;
+    padding: 24px 36px;
+    background: rgba(8, 10, 24, 0.85);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 243, 255, 0.25), inset 0 0 15px rgba(0, 243, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 當動作選單隱藏時，縮小並稍微下沉 */
+.action-menu[style*="opacity: 0"],
+.action-menu[style*="opacity: 0."] {
+    transform: translate(-50%, -40%) scale(0.9) !important;
 }
 
 .action-btn {
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(0, 243, 255, 0.3);
-    border-radius: 4px;
-    padding: 8px 12px;
+    background: rgba(15, 20, 38, 0.6);
+    border: 1.5px solid rgba(0, 243, 255, 0.4);
+    border-radius: 8px;
+    padding: 14px 20px;
     color: #fff;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     text-align: left;
+    width: 240px;
 }
 
 .action-btn:hover:not(:disabled) {
@@ -1125,5 +1179,242 @@ body {
     100% { 
         box-shadow: 0 0 25px rgba(255, 46, 84, 1), 0 0 45px rgba(255, 46, 84, 0.6), inset 0 0 12px rgba(255,255,255,0.9);
         transform: scale(1.05);
+    }
+}
+
+/* ==========================================
+   行動裝置優化 (橫向或小於 1024px)
+   ========================================== */
+
+/* 旋轉螢幕提示遮罩 */
+.rotate-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at center, #0a0b16 0%, #030307 100%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-light);
+    font-family: var(--font-sans);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    text-align: center;
+    padding: 30px;
+}
+
+.rotate-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.rotate-icon-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin-bottom: 30px;
+}
+
+.rotate-phone {
+    width: 50px;
+    height: 85px;
+    border: 3px solid var(--neon-blue);
+    border-radius: 8px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: rotatePhone 2.5s ease-in-out infinite;
+}
+
+.rotate-phone::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--neon-blue);
+}
+
+.rotate-arrow {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border: 3px dashed var(--neon-red);
+    border-radius: 50%;
+    border-top-color: transparent;
+    border-left-color: transparent;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(0deg);
+    animation: rotateArrow 2.5s ease-in-out infinite;
+}
+
+@keyframes rotatePhone {
+    0%, 10% { transform: translate(-50%, -50%) rotate(0deg); }
+    40%, 60% { transform: translate(-50%, -50%) rotate(-90deg); }
+    90%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+@keyframes rotateArrow {
+    0%, 10% { transform: translate(-50%, -50%) rotate(0deg); opacity: 0; }
+    30% { opacity: 1; }
+    60% { transform: translate(-50%, -50%) rotate(-90deg); opacity: 1; }
+    80%, 100% { opacity: 0; }
+}
+
+.rotate-title {
+    font-family: var(--font-sci-fi);
+    font-size: 24px;
+    color: var(--neon-red);
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px rgba(255, 46, 84, 0.5);
+}
+
+.rotate-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-width: 320px;
+}
+
+/* 全域背景優化：使外部黑邊融入科幻格網星空 */
+body {
+    background-color: #030307;
+    background-image: 
+        radial-gradient(circle at center, rgba(15, 20, 38, 0.45) 0%, rgba(3, 3, 7, 0.98) 100%),
+        linear-gradient(rgba(0, 243, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.015) 1px, transparent 1px);
+    background-size: 100% 100%, 40px 40px, 40px 40px;
+}
+
+/* 行動裝置或小螢幕佈局微調與觸控增大 */
+@media screen and (max-width: 1024px), screen and (pointer: coarse) {
+    /* 移除懸停效果以防止觸控設備上的懸浮殘留狀態 */
+    @media (hover: none) {
+        .char-card:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        .action-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(0, 243, 255, 0.3);
+        }
+    }
+
+    /* QTE 觸控大小與靈敏度優化 */
+    .qte-circle {
+        width: 140px;
+        height: 140px;
+    }
+    .qte-core {
+        width: 34px;
+        height: 34px;
+        margin-top: -17px;
+        margin-left: -17px;
+        box-shadow: 0 0 20px var(--neon-blue);
+    }
+
+    /* 戰鬥底部動作選單優化 */
+    .action-menu {
+        width: auto;
+        padding: 15px 25px;
+        gap: 20px;
+    }
+    .action-btn {
+        width: 210px;
+        padding: 10px 14px;
+    }
+    .btn-icon {
+        font-size: 20px;
+        margin-right: 12px;
+    }
+    .btn-name {
+        font-size: 14px;
+    }
+    .btn-desc {
+        font-size: 10px;
+    }
+
+    /* 調整 HUD 在縮放下的易讀性 */
+    .char-name {
+        font-size: 20px;
+    }
+    .bar-text {
+        font-size: 10px;
+        font-weight: 800;
+    }
+    .turn-indicator {
+        font-size: 13px;
+        padding: 6px 18px;
+    }
+    .color-timer {
+        width: 40px;
+        height: 40px;
+    }
+
+    /* 靜音/音效按鈕觸控增大 */
+    .mute-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+        bottom: 20px;
+        right: 20px;
+    }
+
+    /* 角色選擇卡片尺寸與間距調整，防止小螢幕溢出 */
+    .selection-container {
+        gap: 15px;
+        margin: 15px 0;
+    }
+    .selection-box {
+        padding: 15px;
+    }
+    .selection-box h3 {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+    .character-carousel {
+        gap: 10px;
+    }
+    .char-card {
+        width: 110px;
+        height: 165px;
+    }
+    .char-card-name {
+        font-size: 12px;
+    }
+    .char-card-stat {
+        font-size: 9px;
+    }
+
+    /* 遊戲主選單控制區域與開始按鈕 */
+    .difficulty-selector {
+        gap: 8px;
+    }
+    .diff-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+    .primary-btn {
+        font-size: 20px;
+        padding: 14px 44px;
+    }
+    .game-instructions {
+        padding: 12px 15px;
+        margin-top: 10px;
+    }
+    .game-instructions li {
+        font-size: 10px;
+        line-height: 1.5;
     }
 }

@@ -18,6 +18,40 @@ function getBasePath() {
 
 const BASE_PATH = getBasePath();
 
+// 獲取目前遊戲縮放比例 (為支援行動端 CSS transform scale 的座標對齊)
+function getGameScale() {
+    const container = document.getElementById('game-container');
+    if (!container) return 1;
+    const targetW = 1024;
+    const targetH = 768;
+    const windowW = window.innerWidth;
+    const windowH = window.innerHeight;
+    const scaleX = windowW / targetW;
+    const scaleY = windowH / targetH;
+    return Math.min(scaleX, scaleY);
+}
+
+// 檢測螢幕方向與行動裝置，以決定是否顯示轉向提示
+function checkOrientation() {
+    const rotateOverlay = document.getElementById('rotate-overlay');
+    if (!rotateOverlay) return;
+
+    // 寬度小於高度表示是垂直直向螢幕
+    const isPortrait = window.innerHeight > window.innerWidth;
+    // 檢測是否為行動裝置觸控，或者螢幕寬度較小者
+    const isMobile = window.innerWidth < 1024 && (
+        'ontouchstart' in window || 
+        navigator.maxTouchPoints > 0 || 
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    );
+
+    if (isPortrait && isMobile) {
+        rotateOverlay.classList.add('active');
+    } else {
+        rotateOverlay.classList.remove('active');
+    }
+}
+
 // ==========================================
 // 1. 遊戲資料配置
 // ==========================================
@@ -849,7 +883,7 @@ class GameEngine {
 
         // 隱藏動作選單
         this.doms.actionMenu.style.pointerEvents = 'none';
-        this.doms.actionMenu.style.opacity = '0.5';
+        this.doms.actionMenu.style.opacity = '0';
 
         // 延遲發動怪獸進攻
         setTimeout(() => {
@@ -877,16 +911,19 @@ class GameEngine {
         // 爆氣狀態下，防禦速度加快 30%
         const speed = (target === 'hero' && this.isDesperationMode) ? qteSpeedSetting * 1.3 : qteSpeedSetting;
 
+        // 獲取目前遊戲縮放比例
+        const currentScale = getGameScale();
+
         // 計算角色在戰鬥舞台中的位置以精準定位 QTE
         const rect = this.doms.battleStage.getBoundingClientRect();
         const wrapper = target === 'monster' ? this.doms.monsterFighter : this.doms.heroFighter;
         const fighterRect = wrapper.getBoundingClientRect();
 
-        // 獲取角色在舞台容器內的相對座標範圍
-        const relativeLeft = fighterRect.left - rect.left;
-        const relativeTop = fighterRect.top - rect.top;
-        const width = fighterRect.width;
-        const height = fighterRect.height;
+        // 獲取角色在舞台容器內的相對座標範圍 (除以縮放比例以轉為 CSS 像素)
+        const relativeLeft = (fighterRect.left - rect.left) / currentScale;
+        const relativeTop = (fighterRect.top - rect.top) / currentScale;
+        const width = fighterRect.width / currentScale;
+        const height = fighterRect.height / currentScale;
 
         let currentQteIndex = 0;
 
@@ -903,9 +940,9 @@ class GameEngine {
             const x = relativeLeft + borderPadding + Math.random() * (width - borderPadding * 2);
             const y = relativeTop + borderPadding + Math.random() * (height - borderPadding * 2 - 40);
 
-            // 建立 QTE Dom
+            // 建立 QTE Dom (若目標是英雄防禦，加入 monster-turn 樣式以渲染紅色判定圈)
             const qteEl = document.createElement('div');
-            qteEl.className = 'qte-circle';
+            qteEl.className = `qte-circle${target === 'hero' ? ' monster-turn' : ''}`;
             qteEl.style.left = `${x}px`;
             qteEl.style.top = `${y}px`;
 
@@ -1052,7 +1089,7 @@ class GameEngine {
     executeHeroAttack(isSpecial = false) {
         // 禁點動作選單
         this.doms.actionMenu.style.pointerEvents = 'none';
-        this.doms.actionMenu.style.opacity = '0.5';
+        this.doms.actionMenu.style.opacity = '0';
 
         const qteCount = isSpecial ? 5 : 3;
         this.logMessage(`⚔️ 超人發動${isSpecial ? '必殺技：' + this.selectedHero.specialName : '普通攻擊'}！準備 QTE 連擊！`, 'hero');
@@ -1108,17 +1145,20 @@ class GameEngine {
                 this.doms.monsterFighter.classList.add('hit-anim');
                 this.flashScreen('white');
 
-                // 獲取怪獸的中心位置並在此生成粒子與浮動傷害
+                // 獲取目前遊戲縮放比例
+                const currentScale = getGameScale();
+
+                // 獲取怪獸的中心位置並在此生成粒子與浮動傷害 (除以縮放比例以轉為 CSS 像素)
                 const rect = this.doms.monsterFighter.getBoundingClientRect();
                 const containerRect = this.doms.battleStage.getBoundingClientRect();
-                const hitX = rect.left - containerRect.left + rect.width / 2;
-                const hitY = rect.top - containerRect.top + rect.height / 2;
+                const hitX = (rect.left - containerRect.left + rect.width / 2) / currentScale;
+                const hitY = (rect.top - containerRect.top + rect.height / 2) / currentScale;
 
                 if (isSpecial) {
-                    // 必殺技雷射！
+                    // 必殺技雷射！ (除以縮放比例以轉為 CSS 像素)
                     const heroRect = this.doms.heroFighter.getBoundingClientRect();
-                    const heroX = heroRect.left - containerRect.left + heroRect.width / 2;
-                    const heroY = heroRect.top - containerRect.top + heroRect.height / 3; // 經典斯派修姆光線從手部發射
+                    const heroX = (heroRect.left - containerRect.left + heroRect.width / 2) / currentScale;
+                    const heroY = (heroRect.top - containerRect.top + heroRect.height / 3) / currentScale; // 經典斯派修姆光線從手部發射
                     
                     audio.playLaser(1.2);
                     this.canvasManager.addLaserBeam(heroX, heroY, hitX, hitY, '#00f3ff');
@@ -1221,10 +1261,13 @@ class GameEngine {
                 this.doms.heroFighter.classList.add('hit-anim');
                 this.flashScreen('red');
 
+                // 獲取目前遊戲縮放比例
+                const currentScale = getGameScale();
+
                 const rect = this.doms.heroFighter.getBoundingClientRect();
                 const containerRect = this.doms.battleStage.getBoundingClientRect();
-                const hitX = rect.left - containerRect.left + rect.width / 2;
-                const hitY = rect.top - containerRect.top + rect.height / 2;
+                const hitX = (rect.left - containerRect.left + rect.width / 2) / currentScale;
+                const hitY = (rect.top - containerRect.top + rect.height / 2) / currentScale;
 
                 // 防禦特效與粒子
                 if (blockFactor >= 0.8) {
@@ -1238,10 +1281,10 @@ class GameEngine {
                         this.monsterHp = Math.max(0, this.monsterHp - reflectedDmg);
                         this.logMessage(`✨ 光能反彈！對怪獸造成 ${reflectedDmg} 點反震傷害！`, 'perfect-hit');
                         
-                        // 繪製反射粒子
+                        // 繪製反射粒子 (除以縮放比例以轉為 CSS 像素)
                         const monsterRect = this.doms.monsterFighter.getBoundingClientRect();
-                        const monsterX = monsterRect.left - containerRect.left + monsterRect.width / 2;
-                        const monsterY = monsterRect.top - containerRect.top + monsterRect.height / 2;
+                        const monsterX = (monsterRect.left - containerRect.left + monsterRect.width / 2) / currentScale;
+                        const monsterY = (monsterRect.top - containerRect.top + monsterRect.height / 2) / currentScale;
                         this.canvasManager.addLaserBeam(hitX, hitY, monsterX, monsterY, '#00f3ff');
                         this.showFloatingDamage(reflectedDmg, monsterX, monsterY - 40, false);
                     }
@@ -1367,6 +1410,11 @@ window.addEventListener('DOMContentLoaded', () => {
     // 初始化與監聽視窗變動，實現響應式自適應縮放
     resizeGame();
     window.addEventListener('resize', resizeGame);
+
+    // 行動端直向螢幕提示檢測
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
 
     // 針對 iOS Safari 及行動端觸控設備的全域音訊一次性解鎖機制
     const unlockAudio = () => {
