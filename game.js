@@ -2,6 +2,22 @@
  * 奧特宇宙：究極光線對決 - 遊戲邏輯控制
  */
 
+// 動態獲取當前應用的基礎路徑 (解決 GitHub Pages 尾部斜線 404 問題)
+function getBasePath() {
+    const path = window.location.pathname;
+    // 如果是具體檔案 (如 /Ultraman/index.html) -> 回傳 /Ultraman/
+    if (path.endsWith('.html')) {
+        return path.substring(0, path.lastIndexOf('/') + 1);
+    }
+    // 如果沒有以斜線結尾 (如 /Ultraman) -> 自動補上 / 成為 /Ultraman/
+    if (!path.endsWith('/')) {
+        return path + '/';
+    }
+    return path;
+}
+
+const BASE_PATH = getBasePath();
+
 // ==========================================
 // 1. 遊戲資料配置
 // ==========================================
@@ -14,7 +30,7 @@ const HEROES = [
         atk: 120,
         def: 100,
         specialName: '哉佩利敖光線',
-        img: 'images/ultraman.jpg',
+        img: BASE_PATH + 'images/ultraman.jpg',
         color: '#ff2e54',
         desc: '能力均衡，擁有光之守護。',
         hue: 0
@@ -27,7 +43,7 @@ const HEROES = [
         atk: 150,
         def: 80,
         specialName: '集束賽羅射線',
-        img: 'images/ultraman.jpg', // 共用立繪
+        img: BASE_PATH + 'images/ultraman.jpg', // 共用立繪
         color: '#00f3ff',
         desc: '高攻擊力，進攻迅捷但防禦較弱。',
         hue: 200
@@ -40,7 +56,7 @@ const HEROES = [
         atk: 100,
         def: 120,
         specialName: '斯特利姆光線',
-        img: 'images/ultraman.jpg', // 共用立繪
+        img: BASE_PATH + 'images/ultraman.jpg', // 共用立繪
         color: '#ff7b00',
         desc: '高生命力與堅實防護，擅長持久戰。',
         hue: 330
@@ -55,7 +71,7 @@ const MONSTERS = [
         hp: 1200,
         atk: 110,
         def: 80,
-        img: 'images/monster.jpg',
+        img: BASE_PATH + 'images/monster.jpg',
         color: '#ff7b00',
         desc: '強力的尾巴攻擊與地底衝撞。',
         hue: 0
@@ -67,7 +83,7 @@ const MONSTERS = [
         hp: 1500,
         atk: 140,
         def: 100,
-        img: 'images/monster.jpg', // 共用立繪
+        img: BASE_PATH + 'images/monster.jpg', // 共用立繪
         color: '#cc00ff',
         desc: '防禦力極高，能反彈光線的終極怪獸. ',
         hue: 130
@@ -79,7 +95,7 @@ const MONSTERS = [
         hp: 900,
         atk: 120,
         def: 70,
-        img: 'images/monster.jpg', // 共用立繪
+        img: BASE_PATH + 'images/monster.jpg', // 共用立繪
         color: '#00ff87',
         desc: '幻影分身，動作敏捷且具備干擾能力。',
         hue: 250
@@ -524,6 +540,23 @@ class GameEngine {
         this.initDoms();
         this.bindEvents();
         this.renderSelectionCarousels();
+        this.fixImagePaths();
+    }
+
+    fixImagePaths() {
+        // 1. 強制以 JS 動態設定 HTML 初始圖片，保證在任何 URL 斜線配置下皆不發生 404
+        if (this.doms.heroImg) {
+            this.doms.heroImg.src = BASE_PATH + 'images/ultraman.jpg';
+        }
+        if (this.doms.monsterImg) {
+            this.doms.monsterImg.src = BASE_PATH + 'images/monster.jpg';
+        }
+
+        // 2. 強制以 JS 動態設定 CSS 背景圖片，排除 assets/ 資料夾中相對路徑的解析錯誤
+        const battleScreen = document.getElementById('battle-screen');
+        if (battleScreen) {
+            battleScreen.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('${BASE_PATH}images/bg.jpg')`;
+        }
     }
 
     initDoms() {
