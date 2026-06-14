@@ -1,0 +1,40 @@
+name: 自動編譯與部署 GitHub Pages
+
+on:
+  push:
+    # 當程式碼推送到 master 或 main 分支時觸發
+    branches:
+      - master
+      - main
+
+# 賦予工作流寫入權限，以便將編譯結果推送到 gh-pages 分支
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 檢出程式碼 (Checkout) 🛎️
+        uses: actions/checkout@v4
+
+      - name: 設定 Node.js 環境 (Setup Node) ⚙️
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 安裝依賴 (Install Dependencies) 🔧
+        run: npm install
+
+      - name: 編譯專案 (Build) 🏗️
+        run: npm run build
+
+      - name: 發布至 GitHub Pages (Deploy) 🚀
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          # 使用 GitHub 自動產生的臨時權限 Token，免手動配置
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 要發布的編譯產物目錄 (Vite 預設為 dist)
+          publish_dir: ./dist

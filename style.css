@@ -388,7 +388,7 @@ body {
    2. 戰鬥畫面 樣式
    ========================================== */
 #battle-screen {
-    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('images/bg.jpg');
+    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('./images/bg.jpg');
     background-size: cover;
     background-position: center;
     display: flex;

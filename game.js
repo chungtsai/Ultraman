@@ -2,6 +2,9 @@
  * 奧特宇宙：究極光線對決 - 遊戲邏輯控制
  */
 
+import ultramanImg from './images/ultraman.jpg';
+import monsterImg from './images/monster.jpg';
+
 // ==========================================
 // 1. 遊戲資料配置
 // ==========================================
@@ -14,7 +17,7 @@ const HEROES = [
         atk: 120,
         def: 100,
         specialName: '哉佩利敖光線',
-        img: 'images/ultraman.jpg',
+        img: ultramanImg,
         color: '#ff2e54',
         desc: '能力均衡，擁有光之守護。',
         hue: 0
@@ -27,7 +30,7 @@ const HEROES = [
         atk: 150,
         def: 80,
         specialName: '集束賽羅射線',
-        img: 'images/ultraman.jpg', // 共用立繪
+        img: ultramanImg, // 共用立繪
         color: '#00f3ff',
         desc: '高攻擊力，進攻迅捷但防禦較弱。',
         hue: 200
@@ -40,7 +43,7 @@ const HEROES = [
         atk: 100,
         def: 120,
         specialName: '斯特利姆光線',
-        img: 'images/ultraman.jpg', // 共用立繪
+        img: ultramanImg, // 共用立繪
         color: '#ff7b00',
         desc: '高生命力與堅實防護，擅長持久戰。',
         hue: 330
@@ -55,7 +58,7 @@ const MONSTERS = [
         hp: 1200,
         atk: 110,
         def: 80,
-        img: 'images/monster.jpg',
+        img: monsterImg,
         color: '#ff7b00',
         desc: '強力的尾巴攻擊與地底衝撞。',
         hue: 0
@@ -67,7 +70,7 @@ const MONSTERS = [
         hp: 1500,
         atk: 140,
         def: 100,
-        img: 'images/monster.jpg', // 共用立繪
+        img: monsterImg, // 共用立繪
         color: '#cc00ff',
         desc: '防禦力極高，能反彈光線的終極怪獸。',
         hue: 130
@@ -79,7 +82,7 @@ const MONSTERS = [
         hp: 900,
         atk: 120,
         def: 70,
-        img: 'images/monster.jpg', // 共用立繪
+        img: monsterImg, // 共用立繪
         color: '#00ff87',
         desc: '幻影分身，動作敏捷且具備干擾能力。',
         hue: 250
