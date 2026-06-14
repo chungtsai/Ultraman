@@ -893,11 +893,12 @@ class GameEngine {
                 this.qteAnimationFrame = requestAnimationFrame(updateQteFrame);
             };
 
-            // 點擊事件監聽
-            qteEl.addEventListener('mousedown', (e) => {
+            // 點擊與觸控事件監聽 (使用 pointerdown 以相容滑鼠與觸控屏，並消除移動端 300ms 延遲)
+            qteEl.addEventListener('pointerdown', (e) => {
                 if (clicked) return;
                 clicked = true;
                 e.stopPropagation();
+                e.preventDefault(); // 阻斷移動端的滑動或雙擊默認動作
 
                 cancelAnimationFrame(this.qteAnimationFrame);
                 qteEl.remove();
@@ -1297,4 +1298,17 @@ class GameEngine {
 // ==========================================
 window.addEventListener('DOMContentLoaded', () => {
     window.gameEngine = new GameEngine();
+
+    // 針對 iOS Safari 及行動端觸控設備的全域音訊一次性解鎖機制
+    const unlockAudio = () => {
+        audio.init();
+        // 如果 AudioContext 成功運行，則移除監聽以釋放記憶體
+        if (audio.ctx && audio.ctx.state === 'running') {
+            document.removeEventListener('pointerdown', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+    };
+    // 綁定 pointerdown 與 touchstart，確保使用者在觸碰任何地方時第一時間解鎖音效
+    document.addEventListener('pointerdown', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
 });

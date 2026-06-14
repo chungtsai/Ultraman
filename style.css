@@ -689,6 +689,7 @@ body {
     height: 100%;
     z-index: 20;
     pointer-events: auto; /* 接收點擊 */
+    touch-action: none;   /* 防止移動端滑動、縮放干擾點擊 */
 }
 
 /* QTE 判定圓圈元件 */
@@ -699,6 +700,7 @@ body {
     transform: translate(-50%, -50%);
     cursor: pointer;
     z-index: 21;
+    touch-action: none;   /* 防止移動端滑動、縮放干擾點擊 */
 }
 
 /* QTE 內圈核心 */
