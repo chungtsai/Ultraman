@@ -172,6 +172,10 @@ class SoundManager {
         this.ctx = null;
         this.muted = false;
         this.colorTimerInterval = null;
+        this.bgmType = null;
+        this.bgmActive = false;
+        this.bgmInterval = null;
+        this.bgmNodes = [];
     }
 
     init() {
@@ -196,6 +200,164 @@ class SoundManager {
                 // 某些舊版 Safari resume() 可能不返回 Promise
                 this.ctx.resume();
             }
+        }
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        if (this.muted) {
+            if (this.bgmNodes) {
+                this.bgmNodes.forEach(node => {
+                    try { node.osc.stop(); } catch(e) {}
+                });
+                this.bgmNodes = [];
+            }
+        } else {
+            if (this.bgmActive && this.bgmType) {
+                const currentType = this.bgmType;
+                this.bgmActive = false;
+                this.playBGM(currentType);
+            }
+        }
+        return this.muted;
+    }
+
+    playBGM(type) {
+        if (this.bgmActive && this.bgmType === type) return;
+        
+        this.stopBGM();
+        this.bgmActive = true;
+        this.bgmType = type;
+        this.init();
+        if (!this.ctx) return;
+
+        let bpm, bassPattern, melodyPattern, bassWave, melodyWave, bassGain, melodyGain;
+        if (type === 'battle') {
+            bpm = 135;
+            // 緊張感強烈的戰鬥低音線 (16步循環)
+            bassPattern = [
+                110.00, 110.00, 164.81, 110.00, // A2, A2, E3, A2
+                98.00, 98.00, 146.83, 98.00,   // G2, G2, D3, G2
+                87.31, 87.31, 130.81, 87.31,   // F2, F2, C3, F2
+                98.00, 98.00, 146.83, 164.81   // G2, G2, D3, E3
+            ];
+            // 英雄風熱血戰鬥旋律 (32步循環)
+            melodyPattern = [
+                440.00, 0, 440.00, 493.88, 523.25, 0, 523.25, 587.33,
+                659.25, 0, 659.25, 587.33, 523.25, 0, 493.88, 0,
+                440.00, 0, 440.00, 493.88, 523.25, 0, 523.25, 587.33,
+                783.99, 0, 783.99, 698.46, 659.25, 587.33, 523.25, 493.88
+            ];
+            bassWave = 'sawtooth';
+            melodyWave = 'square';
+            bassGain = 0.03;
+            melodyGain = 0.015;
+        } else { // 'menu'
+            bpm = 105;
+            // 溫暖舒緩的選單低音線
+            bassPattern = [
+                110.00, 0, 164.81, 0, 110.00, 0, 164.81, 0,
+                87.31, 0, 130.81, 0, 87.31, 0, 130.81, 0,
+                130.81, 0, 196.00, 0, 130.81, 0, 196.00, 0,
+                98.00, 0, 146.83, 0, 98.00, 0, 146.83, 0
+            ];
+            // 遼闊悠揚的選單主旋律
+            melodyPattern = [
+                440.00, 0, 523.25, 0, 659.25, 0, 523.25, 0,
+                349.23, 0, 523.25, 0, 698.46, 0, 523.25, 0,
+                392.00, 0, 523.25, 0, 783.99, 0, 523.25, 0,
+                392.00, 0, 493.88, 0, 587.33, 0, 493.88, 0
+            ];
+            bassWave = 'triangle';
+            melodyWave = 'sine';
+            bassGain = 0.04;
+            melodyGain = 0.02;
+        }
+
+        const stepDuration = 60 / bpm / 2;
+        let nextNoteTime = this.ctx.currentTime + 0.1;
+        let step = 0;
+
+        this.bgmInterval = setInterval(() => {
+            if (this.muted || !this.ctx) return;
+            
+            // 防止背景標籤頁或休眠導致 node 積壓
+            if (nextNoteTime < this.ctx.currentTime) {
+                nextNoteTime = this.ctx.currentTime + 0.05;
+            }
+
+            while (nextNoteTime < this.ctx.currentTime + 0.25) {
+                const bassFreq = bassPattern[step % bassPattern.length];
+                if (bassFreq > 0) {
+                    this.playBGMNote(bassWave, bassFreq, stepDuration * 0.9, bassGain, nextNoteTime);
+                }
+
+                const melodyFreq = melodyPattern[step % melodyPattern.length];
+                if (melodyFreq > 0) {
+                    const waveType = (type === 'battle' && step % 4 === 0) ? 'triangle' : melodyWave;
+                    this.playBGMNote(waveType, melodyFreq, stepDuration * 0.8, melodyGain, nextNoteTime);
+                }
+
+                nextNoteTime += stepDuration;
+                step++;
+            }
+        }, 50);
+    }
+
+    playBGMNote(type, freq, duration, gainStart, time) {
+        if (this.muted || !this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gainNode = this.ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+
+        if (type === 'sawtooth' && freq < 200) {
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(250, time);
+            osc.connect(filter);
+            filter.connect(gainNode);
+        } else {
+            osc.connect(gainNode);
+        }
+
+        gainNode.gain.setValueAtTime(0, time);
+        gainNode.gain.linearRampToValueAtTime(gainStart, time + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+        gainNode.connect(this.ctx.destination);
+
+        try {
+            osc.start(time);
+            osc.stop(time + duration);
+        } catch (e) {
+            console.error('BGM start error:', e);
+        }
+
+        const nodeObj = { osc, gainNode, stopTime: time + duration };
+        this.bgmNodes.push(nodeObj);
+        
+        // 過濾已播放完畢的 notes
+        this.bgmNodes = this.bgmNodes.filter(n => n.stopTime > this.ctx.currentTime);
+    }
+
+    stopBGM() {
+        this.bgmActive = false;
+        this.bgmType = null;
+        if (this.bgmInterval) {
+            clearInterval(this.bgmInterval);
+            this.bgmInterval = null;
+        }
+        if (this.bgmNodes) {
+            this.bgmNodes.forEach(node => {
+                try {
+                    node.osc.stop();
+                    node.osc.disconnect();
+                } catch(e) {}
+            });
+            this.bgmNodes = [];
         }
     }
 
@@ -333,6 +495,20 @@ class SoundManager {
         
         tremolo.stop(this.ctx.currentTime + duration);
         osc.stop(this.ctx.currentTime + duration);
+    }
+
+    // 回復血量音效
+    playHeal() {
+        this.init();
+        if (this.muted || !this.ctx) return;
+        
+        const now = this.ctx.currentTime;
+        // 快速上升的三角波與正弦波琶音，營造修復能充盈全身的聽覺感受
+        const freqs = [392.00, 523.25, 659.25, 783.99, 1046.50]; // G4, C5, E5, G5, C6
+        freqs.forEach((freq, index) => {
+            const delay = index * 0.08;
+            this.createOscillator('triangle', freq, 0.25, 0.15, 0.001, delay);
+        });
     }
 
     // 啟動 Color Timer 的警報嗶嗶聲
@@ -629,6 +805,7 @@ class GameEngine {
         this.muteBtn = document.getElementById('mute-btn');
         this.attackBtn = document.getElementById('attack-btn');
         this.specialBtn = document.getElementById('special-btn');
+        this.healBtn = document.getElementById('heal-btn');
 
         // HUD 元素
         this.doms = {
@@ -661,7 +838,8 @@ class GameEngine {
             screenFlash: document.getElementById('screen-flash'),
             
             actionMenu: document.getElementById('action-menu'),
-            specialDesc: document.getElementById('special-desc')
+            specialDesc: document.getElementById('special-desc'),
+            healDesc: document.getElementById('heal-desc')
         };
     }
 
@@ -684,8 +862,8 @@ class GameEngine {
 
         // 靜音切換
         this.muteBtn.addEventListener('click', () => {
-            audio.muted = !audio.muted;
-            this.muteBtn.innerText = audio.muted ? '🔇' : '🔊';
+            const isMuted = audio.toggleMute();
+            this.muteBtn.innerText = isMuted ? '🔇' : '🔊';
             audio.playClick();
         });
 
@@ -712,6 +890,12 @@ class GameEngine {
             audio.playClick();
             this.executeHeroAttack(true); // 必殺技
         });
+
+        this.healBtn.addEventListener('click', () => {
+            if (this.currentTurn !== 'hero' || this.healCount <= 0) return;
+            audio.playClick();
+            this.executeHeroHeal();
+        });
     }
 
     switchScreen(screenName) {
@@ -722,6 +906,7 @@ class GameEngine {
         
         if (screenName === 'menu') {
             audio.stopColorTimerSound();
+            audio.playBGM('menu');
         }
     }
 
@@ -784,6 +969,7 @@ class GameEngine {
         this.heroMaxHp = this.selectedHero.hp;
         this.heroEnergy = 0;
         this.isDesperationMode = false;
+        this.healCount = 3; // 每場戰鬥限用 3 次修復膠囊
         
         const diffData = DIFFICULTY_SETTINGS[this.difficulty];
         
@@ -827,6 +1013,7 @@ class GameEngine {
         // Color Timer 重置為藍色常亮
         this.doms.colorTimer.className = 'color-timer blue';
         audio.stopColorTimerSound();
+        audio.playBGM('battle');
 
         // 寫入戰鬥日誌
         this.doms.battleLog.innerHTML = '';
@@ -867,6 +1054,17 @@ class GameEngine {
             this.specialBtn.classList.add('disabled');
             this.specialBtn.setAttribute('disabled', 'true');
             this.doms.specialDesc.innerText = `能量不足 (需 100%)`;
+        }
+
+        // 處理補血按鈕狀態
+        if (this.healCount > 0) {
+            this.healBtn.classList.remove('disabled');
+            this.healBtn.removeAttribute('disabled');
+            this.doms.healDesc.innerText = `回復 20% 生命 (剩餘 ${this.healCount} 次)`;
+        } else {
+            this.healBtn.classList.add('disabled');
+            this.healBtn.setAttribute('disabled', 'true');
+            this.doms.healDesc.innerText = `已達上限 (剩餘 0 次)`;
         }
 
         // 怪獸 HP
@@ -1263,6 +1461,59 @@ class GameEngine {
         });
     }
 
+    executeHeroHeal() {
+        if (this.currentTurn !== 'hero' || this.healCount <= 0) return;
+
+        // 禁點動作選單
+        this.doms.actionMenu.style.pointerEvents = 'none';
+        this.doms.actionMenu.style.opacity = '0';
+
+        // 扣除次數
+        this.healCount--;
+
+        // 計算回復量 (20% 最大生命值)
+        const healAmount = Math.round(this.heroMaxHp * 0.20);
+        this.heroHp = Math.min(this.heroMaxHp, this.heroHp + healAmount);
+
+        this.logMessage(`💚 超人使用了修復膠囊！回復了 ${healAmount} 點生命值！ (剩餘：${this.healCount} 次)`, 'perfect-hit');
+        
+        // 播放回復音效
+        audio.playHeal();
+
+        // 觸發綠色恢復螢幕閃爍
+        this.flashScreen('green');
+        
+        // 獲取超人立繪的中心座標
+        const currentScale = getGameScale();
+        const rect = this.doms.heroFighter.getBoundingClientRect();
+        const containerRect = this.doms.battleStage.getBoundingClientRect();
+        const centerX = (rect.left - containerRect.left + rect.width / 2) / currentScale;
+        const centerY = (rect.top - containerRect.top + rect.height / 2) / currentScale;
+
+        // 繪製綠色回復粒子
+        this.canvasManager.addQTEBurst(centerX, centerY, '#00ff87');
+        
+        // 顯示回復的漂浮字體 (綠色)
+        this.showFloatingText(`+${healAmount}`, centerX, centerY - 60, 'text-heal');
+
+        this.updateHud();
+
+        // 如果原本爆氣，HP 回復到 30% 以上後，應解除爆氣狀態並關閉警報
+        const heroHpPct = (this.heroHp / this.heroMaxHp) * 100;
+        if (heroHpPct > 30 && this.isDesperationMode) {
+            this.isDesperationMode = false;
+            this.doms.colorTimer.className = 'color-timer blue';
+            audio.stopColorTimerSound();
+            this.logMessage(`✨ 能量回復安全區，解除極限爆氣狀態。`, 'system');
+        }
+
+        // 消耗一回合，1.5 秒後輪到怪獸回合
+        setTimeout(() => {
+            if (this.isGameOver) return;
+            this.startMonsterTurn();
+        }, 1500);
+    }
+
     executeMonsterAttack() {
         if (this.isGameOver) return;
 
@@ -1410,6 +1661,7 @@ class GameEngine {
     endGame(isVictory) {
         this.isGameOver = true;
         audio.stopColorTimerSound();
+        audio.stopBGM();
 
         // 停止 QTE 動畫環
         cancelAnimationFrame(this.qteAnimationFrame);
@@ -1499,6 +1751,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (audio.ctx && audio.ctx.state === 'running') {
             document.removeEventListener('pointerdown', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
+            audio.playBGM('menu');
         }
     };
     // 綁定 pointerdown 與 touchstart，確保使用者在觸碰任何地方時第一時間解鎖音效

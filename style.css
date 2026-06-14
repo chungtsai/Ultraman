@@ -102,6 +102,10 @@ body {
     background-color: rgba(255, 255, 255, 0.7);
     opacity: 1;
 }
+.screen-flash.flash-green {
+    background-color: rgba(0, 255, 135, 0.4);
+    opacity: 1;
+}
 
 /* 統一的 Screen 佈局 */
 .screen {
@@ -916,6 +920,11 @@ body {
 .text-miss {
     color: var(--neon-red) !important;
     text-shadow: 0 0 10px rgba(255, 46, 84, 0.8), 0 2px 4px rgba(0,0,0,0.9);
+}
+.text-heal {
+    color: #00ff87 !important;
+    text-shadow: 0 0 15px rgba(0, 255, 135, 0.95), 0 2px 4px rgba(0,0,0,0.9);
+    font-size: 28px !important;
 }
 
 /* 底部戰鬥面板 */
