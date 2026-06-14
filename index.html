@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="./assets/index-D0tTRRL9.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-rodkqAg8.css">
+  <script type="module" crossorigin src="./assets/index-fqO6Qoqa.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Ce5UeYZn.css">
 </head>
 <body>
     <!-- 遊戲外層容器，用於限制最大寬度與保持 16:9 比例或響應式 -->
@@ -218,6 +218,16 @@
 
         <!-- 音量與靜音按鈕 -->
         <button id="mute-btn" class="mute-btn" title="切換音效">🔊</button>
+    </div>
+
+    <!-- 旋轉螢幕提示 (移動端直向螢幕時顯示) -->
+    <div id="rotate-overlay" class="rotate-overlay">
+        <div class="rotate-icon-wrapper">
+            <div class="rotate-arrow"></div>
+            <div class="rotate-phone"></div>
+        </div>
+        <div class="rotate-title">SYSTEM ALERT</div>
+        <div class="rotate-desc">偵測到垂直螢幕模式。<br>請旋轉您的設備至橫向螢幕 (Landscape) 以獲得最佳對決體驗。</div>
     </div>
 
     <!-- 載入遊戲邏輯 -->
