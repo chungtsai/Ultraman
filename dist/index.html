@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>奧特宇宙：究極光線對決 | QTE 鹹蛋超人怪獸格鬥</title>
+    <!-- 引入科幻風字體 Orbitron 與 內文字體 Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="./assets/index-CDAkSpcD.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BzdL1gxd.css">
+</head>
+<body>
+    <!-- 遊戲外層容器，用於限制最大寬度與保持 16:9 比例或響應式 -->
+    <div id="game-container" class="game-container">
+        
+        <!-- 粒子特效 Canvas (背景/受擊/QTE特效) -->
+        <canvas id="effects-canvas"></canvas>
+
+        <!-- 網格科幻疊加層 -->
+        <div class="grid-overlay"></div>
+        
+        <!-- 畫面閃紅/閃白受傷特效層 -->
+        <div id="screen-flash" class="screen-flash"></div>
+
+        <!-- ==================== 1. 主選單/角色選擇畫面 ==================== -->
+        <div id="menu-screen" class="screen active">
+            <div class="menu-header">
+                <h1 class="game-title">ULTRAMAN</h1>
+                <h2 class="game-subtitle">ULTIMATE SHOWDOWN</h2>
+                <p class="game-tagline">究 極 光 線 對 決</p>
+            </div>
+
+            <!-- 角色選擇區域 -->
+            <div class="selection-container">
+                <div class="selection-box player-selection">
+                    <h3>選擇你的超人</h3>
+                    <div class="character-carousel" id="hero-carousel">
+                        <!-- 英雄卡牌將由 JS 動態生成 -->
+                    </div>
+                </div>
+
+                <div class="selection-box enemy-selection">
+                    <h3>遭遇的怪獸</h3>
+                    <div class="character-carousel" id="monster-carousel">
+                        <!-- 怪獸卡牌將由 JS 動態生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 難度選擇與開始 -->
+            <div class="menu-controls">
+                <div class="difficulty-selector">
+                    <span class="control-label">戰鬥難度：</span>
+                    <button class="diff-btn active" data-difficulty="normal">普通 (Normal)</button>
+                    <button class="diff-btn" data-difficulty="hard">困難 (Hard)</button>
+                    <button class="diff-btn" data-difficulty="legend">傳奇 (Legend)</button>
+                </div>
+                <button id="start-btn" class="btn primary-btn btn-glow">發動變身！進入戰鬥</button>
+            </div>
+            
+            <div class="game-instructions">
+                <h4>戰鬥規則說明</h4>
+                <ul>
+                    <li><strong>進攻回合：</strong>選擇普通攻擊或必殺技後，在怪獸身上會出現發光的 <strong>QTE 圈</strong>。當外圈縮小到與內圈重合的瞬間點擊！</li>
+                    <li><strong>防禦回合：</strong>怪獸進攻時，畫面會聚焦在超人身上，即時點擊超人身上的 <strong>QTE 圈</strong> 進行格擋，越快點擊受傷越少！</li>
+                    <li><strong>彩色計時器：</strong>超人生命低於 30% 時，計時器會閃爍紅光並發出警報。此時超人進入<strong>「極限爆氣」</strong>狀態，攻擊力大增，但防禦 QTE 的時間會縮短！</li>
+                    <li><strong>判定等級：</strong><span class="text-perfect">PERFECT</span> (雙倍傷害/完美無傷) > <span class="text-great">GREAT</span> > <span class="text-good">GOOD</span> > <span class="text-miss">MISS</span> (落空/全額受傷)。</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ==================== 2. 戰鬥畫面 ==================== -->
+        <div id="battle-screen" class="screen">
+            <!-- 頂部 HUD 狀態欄 -->
+            <div class="hud-container">
+                <!-- 鹹蛋超人狀態 -->
+                <div class="status-panel hero-status">
+                    <div class="char-info">
+                        <span id="battle-hero-name" class="char-name">ULTRAMAN</span>
+                        <span class="char-title">HERO</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-label">HP</div>
+                        <div class="bar-bg hp-bar-bg">
+                            <div id="hero-hp-bar" class="bar-fill hp-fill" style="width: 100%;"></div>
+                            <span id="hero-hp-text" class="bar-text">1000 / 1000</span>
+                        </div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-label">ENERGY</div>
+                        <div class="bar-bg energy-bar-bg">
+                            <div id="hero-energy-bar" class="bar-fill energy-fill" style="width: 0%;"></div>
+                            <span id="hero-energy-text" class="bar-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中央彩色計時器與回合提示 -->
+                <div class="center-hud">
+                    <div class="turn-indicator" id="turn-banner">
+                        <span id="turn-text">YOUR TURN</span>
+                        <div id="turn-timer" class="turn-timer"></div>
+                    </div>
+                    <div class="color-timer-wrapper">
+                        <div id="color-timer" class="color-timer blue"></div>
+                        <span class="timer-label">COLOR TIMER</span>
+                    </div>
+                </div>
+
+                <!-- 怪獸狀態 -->
+                <div class="status-panel monster-status">
+                    <div class="char-info text-right">
+                        <span id="battle-monster-name" class="char-name">KAIJU</span>
+                        <span class="char-title text-monster">MONSTER</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-label text-right">HP</div>
+                        <div class="bar-bg hp-bar-bg">
+                            <div id="monster-hp-bar" class="bar-fill hp-fill monster-hp-fill" style="width: 100%;"></div>
+                            <span id="monster-hp-text" class="bar-text">1500 / 1500</span>
+                        </div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-label text-right">RAGE</div>
+                        <div class="bar-bg rage-bar-bg">
+                            <div id="monster-rage-bar" class="bar-fill rage-fill" style="width: 0%;"></div>
+                            <span id="monster-rage-text" class="bar-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 戰鬥主場景 (立繪與背景) -->
+            <div class="battle-stage" id="battle-stage">
+                <!-- 奧特曼立繪容器 -->
+                <div class="fighter-wrapper hero-wrapper" id="hero-fighter">
+                    <div class="fighter-glow hero-glow"></div>
+                    <img id="hero-img" src="images/ultraman.jpg" alt="Ultraman" class="fighter-img">
+                    <div class="action-effect-overlay" id="hero-effect"></div>
+                </div>
+
+                <!-- 怪獸立繪容器 -->
+                <div class="fighter-wrapper monster-wrapper" id="monster-fighter">
+                    <div class="fighter-glow monster-glow"></div>
+                    <img id="monster-img" src="images/monster.jpg" alt="Monster" class="fighter-img">
+                    <div class="action-effect-overlay" id="monster-effect"></div>
+                </div>
+
+                <!-- QTE 點擊覆蓋層 (用於渲染 QTE 判定環與接收點擊) -->
+                <div id="qte-overlay" class="qte-overlay">
+                    <!-- QTE 元件會由 JS 在此處動態生成 -->
+                </div>
+                
+                <!-- 浮動文字顯示層 (Perfect, Great, 傷害數字等) -->
+                <div id="floating-text-container" class="floating-text-container"></div>
+            </div>
+
+            <!-- 底部控制與戰鬥日誌 -->
+            <div class="battle-footer">
+                <!-- 動作按鈕選單 -->
+                <div class="action-menu" id="action-menu">
+                    <button id="attack-btn" class="action-btn active">
+                        <span class="btn-icon">⚔️</span>
+                        <span class="btn-name">普通攻擊</span>
+                        <span class="btn-desc">發動物理打擊 (累積能量)</span>
+                    </button>
+                    <button id="special-btn" class="action-btn disabled" disabled>
+                        <span class="btn-icon">⚡</span>
+                        <span class="btn-name">斯派修姆光線</span>
+                        <span class="btn-desc" id="special-desc">能量不足 (需 100%)</span>
+                    </button>
+                </div>
+
+                <!-- 戰鬥日誌 -->
+                <div class="battle-log-container">
+                    <div class="log-header">戰鬥日誌 SYSTEM LOG</div>
+                    <div class="battle-log" id="battle-log">
+                        <div class="log-entry system">戰鬥系統已啟動。等待超人發動進攻...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 3. 結算畫面 ==================== -->
+        <div id="result-screen" class="screen">
+            <div class="result-box">
+                <h1 id="result-title" class="result-title victory">VICTORY</h1>
+                <div class="result-stats">
+                    <div class="result-row">
+                        <span>最高連擊 (Max Combo)</span>
+                        <span id="result-combo" class="stat-val">0</span>
+                    </div>
+                    <div class="result-row">
+                        <span>完美判定 (Perfect Hits)</span>
+                        <span id="result-perfect" class="stat-val text-perfect">0</span>
+                    </div>
+                    <div class="result-row">
+                        <span>受到傷害 (Damage Taken)</span>
+                        <span id="result-damage" class="stat-val text-miss">0</span>
+                    </div>
+                    <div class="result-row">
+                        <span>賸餘生命 (Remaining HP)</span>
+                        <span id="result-hp" class="stat-val text-great">0</span>
+                    </div>
+                    <div class="result-rating-container">
+                        <div class="rating-label">綜合戰力評級</div>
+                        <div id="result-rating" class="rating-grade">S</div>
+                    </div>
+                </div>
+                <div class="result-buttons">
+                    <button id="restart-btn" class="btn primary-btn btn-glow">重新戰鬥</button>
+                    <button id="menu-btn" class="btn secondary-btn">返回主選單</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 音量與靜音按鈕 -->
+        <button id="mute-btn" class="mute-btn" title="切換音效">🔊</button>
+    </div>
+
+    <!-- 載入遊戲邏輯 -->
+</body>
+</html>
