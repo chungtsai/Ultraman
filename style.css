@@ -552,6 +552,19 @@ body {
     background: var(--neon-red);
 }
 
+/* 連續攻擊警告閃爍 */
+.turn-indicator.danger-blink {
+    background: rgba(255, 0, 0, 0.45) !important;
+    border-color: #ff2e54 !important;
+    box-shadow: 0 0 15px #ff2e54 !important;
+    animation: dangerAlertBlink 0.2s infinite alternate !important;
+}
+
+@keyframes dangerAlertBlink {
+    from { transform: scale(0.98); filter: brightness(0.8); }
+    to { transform: scale(1.05); filter: brightness(1.3); }
+}
+
 .color-timer-wrapper {
     display: flex;
     flex-direction: column;
@@ -798,6 +811,49 @@ body {
 .monster-turn .qte-ring {
     border-color: var(--neon-red);
     box-shadow: 0 0 10px rgba(255, 46, 84, 0.4);
+}
+
+/* QTE 加速狀態 */
+.qte-circle.accelerating-qte .qte-core {
+    background: radial-gradient(circle, #ffffff 30%, #ffd700 100%) !important;
+    box-shadow: 0 0 20px #ffd700, 0 0 30px #ff7b00 !important;
+}
+
+.qte-circle.accelerating-qte .qte-ring {
+    border-color: #ffd700 !important;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6) !important;
+}
+
+.qte-circle.accelerating-qte .qte-perfect-guide {
+    border-color: rgba(255, 215, 0, 0.8) !important;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.5) !important;
+    animation: rotateGuide 4s linear infinite !important; /* 旋轉加快 */
+}
+
+/* 顯示 SPEED UP 提示文字 */
+.qte-speed-badge {
+    position: absolute;
+    top: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-sci-fi);
+    font-size: 11px;
+    font-weight: 800;
+    color: #ffd700;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #ffd700;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+    animation: speedUpPulse 1s infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes speedUpPulse {
+    from { opacity: 0.6; transform: translate(-50%, 0) scale(0.95); }
+    to { opacity: 1.0; transform: translate(-50%, 0) scale(1.05); }
 }
 
 /* 漂浮判定文字 */

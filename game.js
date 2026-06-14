@@ -136,11 +136,32 @@ const MONSTERS = [
     }
 ];
 
-// 難度設定對應的 QTE 速度與傷害係數
+// 難度設定對應的 QTE 速度與傷害係數，以及怪獸強度加成
 const DIFFICULTY_SETTINGS = {
-    normal: { qteSpeed: 0.02, damageMultiplier: 1.0 },
-    hard: { qteSpeed: 0.028, damageMultiplier: 1.3 },
-    legend: { qteSpeed: 0.035, damageMultiplier: 1.6 }
+    normal: { 
+        qteSpeed: 0.02, 
+        damageMultiplier: 1.0,
+        monsterHpMultiplier: 2,
+        monsterAtkMultiplier: 2,
+        extraAttackChance: 0.15,
+        maxConsecutive: 1
+    },
+    hard: { 
+        qteSpeed: 0.028, 
+        damageMultiplier: 1.3,
+        monsterHpMultiplier: 4,
+        monsterAtkMultiplier: 4,
+        extraAttackChance: 0.30,
+        maxConsecutive: 2
+    },
+    legend: { 
+        qteSpeed: 0.035, 
+        damageMultiplier: 1.6,
+        monsterHpMultiplier: 8,
+        monsterAtkMultiplier: 8,
+        extraAttackChance: 0.50,
+        maxConsecutive: 3
+    }
 };
 
 // ==========================================
@@ -764,8 +785,25 @@ class GameEngine {
         this.heroEnergy = 0;
         this.isDesperationMode = false;
         
-        this.monsterHp = this.selectedMonster.hp;
-        this.monsterMaxHp = this.selectedMonster.hp;
+        const diffData = DIFFICULTY_SETTINGS[this.difficulty];
+        
+        // 基礎難度血量加成 (2倍, 4倍, 8倍)
+        let finalMaxHp = this.selectedMonster.hp * diffData.monsterHpMultiplier;
+        
+        // 隨機增加能力 (變異特質)
+        const randomBoosts = [
+            { type: 'hp', name: '巨無霸體型 (生命值額外 +30%)', factor: 1.3 },
+            { type: 'atk', name: '超頻狂暴 (攻擊力額外 +30%)', factor: 1.3 },
+            { type: 'def', name: '能量裝甲 (防禦力額外 +40%)', factor: 1.4 }
+        ];
+        this.monsterMutation = randomBoosts[Math.floor(Math.random() * randomBoosts.length)];
+        
+        if (this.monsterMutation.type === 'hp') {
+            finalMaxHp = Math.round(finalMaxHp * this.monsterMutation.factor);
+        }
+
+        this.monsterHp = finalMaxHp;
+        this.monsterMaxHp = finalMaxHp;
         this.monsterRage = 0;
 
         this.currentTurn = 'hero';
@@ -793,6 +831,8 @@ class GameEngine {
         // 寫入戰鬥日誌
         this.doms.battleLog.innerHTML = '';
         this.logMessage(`戰鬥開始！${this.selectedHero.name} 對決 ${this.selectedMonster.name}`, 'system');
+        this.logMessage(`⚠️ 偵測到怪獸受難度影響大幅強化！HP/ATK 提升至 ${diffData.monsterHpMultiplier} 倍！`, 'monster');
+        this.logMessage(`👾 怪獸變異屬性：【${this.monsterMutation.name}】！`, 'monster');
         this.logMessage(`超人已就戰鬥姿勢。你的回合，請選擇進攻動作。`, 'system');
 
         this.updateHud();
@@ -875,6 +915,7 @@ class GameEngine {
     startMonsterTurn() {
         if (this.isGameOver) return;
         this.currentTurn = 'monster';
+        this.monsterConsecutiveCount = 0; // 重置連續攻擊計數
 
         // 更改 Banner 樣式
         this.doms.turnBanner.classList.add('monster-turn');
@@ -940,9 +981,19 @@ class GameEngine {
             const x = relativeLeft + borderPadding + Math.random() * (width - borderPadding * 2);
             const y = relativeTop + borderPadding + Math.random() * (height - borderPadding * 2 - 40);
 
+            // 計算當前 QTE 的基礎速度加成
+            // 1. 單回合連續 QTE 加速：每一點 QTE 比前一點快 15%
+            const sequenceMultiplier = 1 + currentQteIndex * 0.15;
+            // 2. 連擊數 (Combo) 加速：連擊越高速度越快，最高 +30% (每 1 Combo 加 2%)
+            const comboMultiplier = 1 + Math.min(this.currentCombo, 15) * 0.02;
+            const finalBaseSpeed = speed * sequenceMultiplier * comboMultiplier;
+
+            // 判斷是否屬於「高度加速」狀態 (例如速度乘數大於 1.15)
+            const isHighlyAccelerated = (sequenceMultiplier * comboMultiplier) > 1.15;
+
             // 建立 QTE Dom (若目標是英雄防禦，加入 monster-turn 樣式以渲染紅色判定圈)
             const qteEl = document.createElement('div');
-            qteEl.className = `qte-circle${target === 'hero' ? ' monster-turn' : ''}`;
+            qteEl.className = `qte-circle${target === 'hero' ? ' monster-turn' : ''}${isHighlyAccelerated ? ' accelerating-qte' : ''}`;
             qteEl.style.left = `${x}px`;
             qteEl.style.top = `${y}px`;
 
@@ -950,6 +1001,7 @@ class GameEngine {
                 <div class="qte-perfect-guide"></div>
                 <div class="qte-core"></div>
                 <div class="qte-ring"></div>
+                ${isHighlyAccelerated ? `<span class="qte-speed-badge">SPEED UP!</span>` : ''}
             `;
 
             this.doms.qteOverlay.appendChild(qteEl);
@@ -961,7 +1013,12 @@ class GameEngine {
             const updateQteFrame = () => {
                 if (clicked) return;
 
-                scale -= speed;
+                // 3. 光圈收縮過程中的動態加速 (光圈越小，收縮速度越快)
+                // 從 scale = 2.5 到 0.75，速度係數從 1.0 加速至 1.0 + (2.5 - 0.75) * 0.5 ≈ 1.875 倍
+                const shrinkAcceleration = 1 + (2.5 - scale) * 0.5;
+                const frameSpeed = finalBaseSpeed * shrinkAcceleration;
+
+                scale -= frameSpeed;
                 ringEl.style.transform = `scale(${scale})`;
 
                 if (scale <= 0.75) {
@@ -1238,12 +1295,16 @@ class GameEngine {
             let blockFactor = (perfectCount * 1.0 + greatCount * 0.8 + goodCount * 0.5) / qteCount;
             
             // 計算傷害
-            const monsterAtk = this.selectedMonster.atk * damageMultiplier;
+            const difficultyData = DIFFICULTY_SETTINGS[this.difficulty];
+            let baseAtk = this.selectedMonster.atk * difficultyData.monsterAtkMultiplier;
+            if (this.monsterMutation && this.monsterMutation.type === 'atk') {
+                baseAtk = Math.round(baseAtk * this.monsterMutation.factor);
+            }
+            const monsterAtk = baseAtk * damageMultiplier;
             const heroDefFactor = Math.max(0.4, 1 - this.selectedHero.def / 400);
             let rawDamage = monsterAtk * heroDefFactor;
             
             // 難度係數加成 (怪獸對超人的傷害)
-            const difficultyData = DIFFICULTY_SETTINGS[this.difficulty];
             rawDamage *= difficultyData.damageMultiplier;
 
             // 最終傷害
@@ -1320,7 +1381,22 @@ class GameEngine {
                     if (this.heroHp <= 0) {
                         this.endGame(false);
                     } else {
-                        this.startHeroTurn();
+                        // 連續攻擊判定
+                        const extraAttackChance = difficultyData.extraAttackChance || 0;
+                        const maxConsecutive = difficultyData.maxConsecutive || 0;
+
+                        if (this.monsterConsecutiveCount < maxConsecutive && Math.random() < extraAttackChance) {
+                            this.monsterConsecutiveCount++;
+                            this.doms.turnBanner.classList.add('danger-blink');
+                            this.logMessage(`⚡ 警報！怪獸發動【連續攻擊】 (第 ${this.monsterConsecutiveCount + 1} 次攻勢)！`, 'monster');
+                            
+                            setTimeout(() => {
+                                this.doms.turnBanner.classList.remove('danger-blink');
+                                this.executeMonsterAttack();
+                            }, 1200);
+                        } else {
+                            this.startHeroTurn();
+                        }
                     }
                 }, 400);
 
